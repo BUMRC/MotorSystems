@@ -3,6 +3,7 @@
 import board
 import busio
 import adafruit_pca9685
+import time
 
 #################
 
@@ -50,6 +51,7 @@ class Motor:
 		#self.dir = self.ch_dir.duty_cycle
 		#self.spd = self.ch_spd.duty_cycle
 		self.id = id
+		self.loc = location
 
 	def get_dir(self):
 		return self.dir.duty_cycle
@@ -63,14 +65,31 @@ class Motor:
 	def set_bwd(self):
 		self.dir.duty_cycle = 0
 
+	def check_dir(self, new_dir):
+		if new_dir != 0:
+			new_dir = 65535
+		if self.get_dir() != new_dir:
+			while self.get_spd() > 10:
+				self.set_spd((self.get_spd()/655.35) // 2)
+				#time.sleep(0.1)
+
+	def set_dir(self, val): 
+		if val > 0.0:
+			self.check_dir(1)
+			self.set_fwd()
+		else:
+			self.check_dir(0)
+			self.set_bwd()
+
 	def set_spd(self, speed):
+		# TODO: ADD IN SMOOTHING FUNCTION! See the check_dir func above for reference, change & add!
 		self.spd.duty_cycle = int(655.35 * speed)
 
 	def stop(self):
 		self.set_spd(0)
 
 	def __str__(self):
-		return 'motor' + str(self.id) + ' : ' + location
+		return 'm' + str(self.id) + ' : ' + str(self.loc)
 
 
 
@@ -82,7 +101,7 @@ motor3 = Motor(6, 7, 3, 'wheel mr')
 motor4 = Motor(8, 9, 4, 'wheel bl')
 motor5 = Motor(10,11,5, 'wheel br')
 
-motors = [motor0, motor1]
+motors = [motor0, motor1, motor2, motor3, motor4, motor5]
 
 # Current motor names [used for user input in main()]
 #motor_names = {'m0':motor0, 'm1':motor1}
@@ -110,11 +129,11 @@ def check_val(value, val_type):
 		print('could not make value into a float')
 		valid = False
 
-	if val_type == 'speed':
-		if 0.0 > value or value > 100.0:
+	if val_type == 'speed' and valid != False:
+		if value < 0.0 or value > 100.0:
 			valid = False
-	elif val_type == 'dir':
-		if value <= 0.0:
+	elif val_type == 'dir' and valid != False:
+		if value < 0.0:
 			valid = False
 
 	else:
@@ -125,11 +144,19 @@ def check_val(value, val_type):
 	
 	return valid
 
+# Check motor direction, and slowly change if necessary
+#def check_dir(motor, new_dir):
+#	if new_dir != 0:
+#		new_dir = 65535
+#	if motor.get_dir() != new_dir:
+#		while motor.get_spd() > 10:
+#			motor.set_spd(motor.get_spd // 2)
 
 # Set one motor direction to forward
 def set_fwd(motor):
 	if motor.type() != Motor:
 		return
+#	check_dir(motor, 1)
 	motor.set_fwd()
 
 # Set one motor direction to backward
@@ -137,6 +164,7 @@ def set_bwd(motor):
 	if motor.type() != Motor:
 		print('Invalid motor')
 		return
+#	check_dir(motor, 0)
 	motor.set_bwd()
 
 # Set all motors direction to forward
@@ -151,23 +179,24 @@ def set_all_bwd():
 
 # Drive one motor a speed
 def drv_motor(motor, direction, speed):
-	if motor.type() != Motor:
-		print('Invalid motor')
-		return
-	elif not check_val(speed, 'speed'):
+#	if motor.type() != Motor:
+#		print('Invalid motor')
+#		return
+	if not check_val(speed, 'speed'):
 		return
 	elif not check_val(direction, 'dir'):
 		return
-	motor.set_dir(direction)
-	motor.set_spd(speed)
+#	check_dir(motor, float(direction))
+	motor.set_dir(float(direction))
+	motor.set_spd(float(speed))
 
 # Drive all motors (current direction)
-def drv_fwd(speed):
+def drv(speed):
         if not check_val(speed, 'speed'):
                 return
         for motor in motors:
                 motor.set_spd(speed)
-	
+
 # Drive all motors forward
 def drv_fwd(speed):
 	if not check_val(speed, 'speed'):
@@ -198,8 +227,21 @@ def stop():
 
 def cmd_help(command_list):
 	print('\nHere is a list of current possible commands:')
-	for command in command_list.keys():
-		print(command)
+	print()
+	print('set_fwd MOTOR : set a motor direction to forward')
+	print('set_bwd MOTOR : set a motor direction to backward')
+	print('set_all_fwd : set all motor directions to forward')
+	print('set_all_bwd : set all motor directions to backward')
+	print('drv_motor MOTOR DIR SPD : drive MOTOR in DIR direction and SPD speed')
+	print('drv : drive all motors in the current direction')
+	print('drv_fwd SPD : drive all motors forward at SPD speed')
+	print('drv_bwd SPD : drive all motors backward at SPD speed')
+	print('stop_motor MOTOR : stop specific MOTOR')
+	print('stop : stop all motors')
+	print('exit : exit code')
+	print('help : list commands')
+	print('get_motors : list all motors & locations')
+
 	print()
 
 
@@ -220,7 +262,13 @@ def cmd_help(command_list):
 
 
 # Current motor names [used for user input in main()]
-motor_names = {'m0':motor0, 'm1':motor1}
+motor_names = {'m0':motor0, 
+		'm1':motor1, 
+		'm2':motor2,
+		'm3':motor3,
+		'm4':motor4,
+		'm5':motor5}
+#		'motor0':motor0, 'motor1':motor1}
 
 commands = {'set_fwd':set_fwd,'set_bwd':set_bwd,'set_all_fwd':set_all_fwd,'set_all_bwd':set_all_bwd,'drv_motor':drv_motor,
                 'drv_fwd': drv_fwd, 'drv_bwd':drv_bwd,'stop_motor':stop_motor,'stop':stop,'exit':stop,'help':cmd_help,
@@ -256,10 +304,12 @@ def main():
 			DIR = user_input[2]
 			SPD = user_input[3]
 			if MOTOR not in motor_names.keys():
-				print('invalid motor name (m0, m1)')
+				print('invalid motor name (m0, m1, etc...)')
 				continue
-			
-			commands[command](MOTOR, DIR, SPD)
+
+			MOTOR = motor_names[user_input[1]]		
+
+			commands[command](MOTOR, float(DIR), float(SPD))
 			
 		# user_input: CMD MOTOR
 		elif command in ['set_fwd', 'set_bwd', 'stop_motor']:
@@ -295,3 +345,4 @@ def main():
 ################
 
 main()
+
