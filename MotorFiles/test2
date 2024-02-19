@@ -1,0 +1,65 @@
+#### IMPORTS ####
+# Adafruit & PCA board setups
+import board
+import busio
+import adafruit_pca9685
+
+#################
+
+#### SETUP ####
+# Connections to board
+i2c = busio.I2C(board.SCL, board.SDA)
+shield = adafruit_pca9685.PCA9685(i2c)
+
+# Frequency (general)
+shield.frequency = 250
+
+# Set channels for devices
+# 16 total channels possible [0-15]
+#led_channel = shield.channels[0]
+#led_channel.duty_cycle = 0xf000
+
+mot1_dir = shield.channels[0]
+mot1_speed = shield.channels[1]
+
+################
+
+#### FUNCTIONS ####
+# get_hex(val) changes the [0-100] to [0-0x0ffff] hex scale (aka 65535 max)
+def get_hex(val):
+        return int(655.35 * float(val))
+
+def set_dir(val):
+	# Should either be 0 or anything else
+	if val > 0.0:
+		val = 65535
+	mot1_dir.duty_cycle = val
+
+def set_speed(val):
+	if val > 100.0 or val < 0.0:
+		print('Value has to be in range [0-100]')
+	else:
+		mot1_speed.duty_cycle = get_hex(val)
+
+def main():
+	commands = ['speed','dir']
+	while True:
+		cmd, val = input('Enter a command (speed/dir VALUE): ').split()
+		
+		accepted = True 
+		try:
+			float(val)
+		except:
+			print('Invalid value for direction/speed')
+			continue
+		if cmd not in commands:
+			print('Invalid command')
+			continue		
+		if cmd == 'speed':
+			set_speed(float(val))
+		elif cmd == 'dir':
+			set_dir(float(val))
+
+################
+
+main()
