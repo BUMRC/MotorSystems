@@ -1,0 +1,374 @@
+#### IMPORTS ####
+# Adafruit & PCA board setups
+import board
+import busio
+import adafruit_pca9685
+import time
+
+#################
+
+#### SETUP ####
+# Connections to board
+i2c = busio.I2C(board.SCL, board.SDA)
+shield = adafruit_pca9685.PCA9685(i2c)
+
+# Frequency (general)
+shield.frequency = 250
+
+# Set channels for devices
+# 16 total channels possible [0-15]
+#led_channel = shield.channels[0]
+#led_channel.duty_cycle = 0xf000
+
+#mot1_dir = shield.channels[0]
+#mot1_spd = shield.channels[1]
+#mot2_dir = shield.channels[2]
+#mot2_spd = shield.channels[3]
+
+#motor_spds = [mot1_spd, mot2_spd]
+#motor_dirs = [mot1_dir, mot2_dir]
+
+# Defining motors 
+#motor0 = Motor(0, 1, 0)
+#motor1 = Motor(2, 3, 1)
+
+#motors = [motor0, motor1]
+
+# Current motor names [used for user input in main()]
+#motor_names = {'m0':motor0, 'm1':motor1}
+
+#commands = {'set_fwd':set_fwd,'set_bwd':set_bwd,'set_all_fwd':set_all_fwd,'set_all_bwd':set_all_bwd,'drv_motor':drv_motor,
+#		'drv_fwd': drv_fwd, 'drv_bwd':drv_bwd,'stop_motor':stop_motor,'stop':stop,'exit':stop,'help':cmd_help, 
+#		'get_motors':get_motors}
+
+
+################
+
+# Defining acceleration rates and delay between steps
+acceleration_rate = 1
+delay = 0.1
+class Motor:
+	def __init__(self, channel_dir, channel_spd, id, location='None'):
+		self.dir = shield.channels[channel_dir]
+		self.spd = shield.channels[channel_spd]
+		#self.dir = self.ch_dir.duty_cycle
+		#self.spd = self.ch_spd.duty_cycle
+		self.id = id
+		self.loc = location
+
+	# Returns current direction of motor
+	def get_dir(self):
+		return self.dir.duty_cycle
+
+	# Returns current speed of motor
+	def get_spd(self):
+		return self.spd.duty_cycle
+
+	# Helper method for set_dir, sets motor direction to foward (65535)
+	# Decellerates to 0 before accelerating to previous speed in opposite direction
+	def set_fwd(self):
+		curr_speed = self.get_spd()
+		self.set_spd(0)
+		self.dir.duty_cycle = 65535
+		self.set_spd(curr_speed)
+
+	# Helper method for set_dir, sets motor direction to backward (0)
+	# Decellerates to 0 before accelerating to previous speed in opposite direction
+	def set_bwd(self):
+		curr_speed = self.get_spd()
+		self.set_spd(0)
+		self.dir.duty_cycle = 0
+		self.set_spd(curr_speed)
+
+	# Helper method for set_dir, returns true if new_dir != current direction
+	def check_dir(self, new_dir):
+		if new_dir != 0:
+			new_dir = 65535
+		return self.get_dir() != new_dir
+
+	# Sets motor direction, does nothing if val == current direction
+	def set_dir(self, val): 
+		if val > 0.0:
+			if(self.check_dir(1)):
+				self.set_fwd()
+		else:
+			if(self.check_dir(0)):
+				self.set_bwd()
+
+	# Sets new speed with smoothing function, see acceleration rate and delay time above
+	def set_spd(self, speed):
+		# TODO: ADD IN SMOOTHING FUNCTION! See the check_dir func above for reference, change & add!
+		curr_speed = self.get_spd()
+		if (curr_speed == speed):
+			return
+		elif (curr_speed < speed):
+			while(curr_speed < speed):
+				curr_speed += acceleration_rate
+				self.spd.duty_cycle = int(655.35 * curr_speed)
+				time.sleep(delay)
+		else:
+			while(curr_speed > speed):
+				curr_speed -= acceleration_rate
+				self.spd.duty_cycle = int(655.35 * curr_speed)
+				time.sleep(delay)
+		
+
+	def stop(self):
+		self.set_spd(0)
+
+	def __str__(self):
+		return 'm' + str(self.id) + ' : ' + str(self.loc)
+
+
+
+# Defining motors 
+motor0 = Motor(0, 1, 0, 'wheel fl')
+motor1 = Motor(2, 3, 1, 'wheel fr')
+motor2 = Motor(4, 5, 2, 'wheel ml')
+motor3 = Motor(6, 7, 3, 'wheel mr')
+motor4 = Motor(8, 9, 4, 'wheel bl')
+motor5 = Motor(10,11,5, 'wheel br')
+
+motors = [motor0, motor1, motor2, motor3, motor4, motor5]
+
+
+# Current motor names [used for user input in main()]
+#motor_names = {'m0':motor0, 'm1':motor1}
+
+#commands = {'set_fwd':set_fwd,'set_bwd':set_bwd,'set_all_fwd':set_all_fwd,'set_all_bwd':set_all_bwd,'drv_motor':drv_motor,
+#                'drv_fwd': drv_fwd, 'drv_bwd':drv_bwd,'stop_motor':stop_motor,'stop':stop,'exit':stop,'help':cmd_help,
+#                'get_motors':get_motors}
+
+
+#### FUNCTIONS ####
+def get_motors():
+	for motor in motors:
+		print(motor)
+
+# get_hex(val) changes the [0-100] to [0-0x0ffff] hex scale (aka 65535 max)
+def get_hex(val):
+        return int(655.35 * float(val))
+
+# val_type should either be 'speed' or 'dir'
+def check_val(value, val_type):
+	valid = True
+	try:
+		float(value)
+	except:
+		print('could not make value into a float')
+		valid = False
+
+	if val_type == 'speed' and valid != False:
+		if value < 0.0 or value > 100.0:
+			valid = False
+	elif val_type == 'dir' and valid != False:
+		if value < 0.0:
+			valid = False
+
+	else:
+		print('you messed up in your function call matey...')
+
+	if not valid:
+		print('Invalid speed/dir value')
+	
+	return valid
+
+# Check motor direction, and slowly change if necessary
+#def check_dir(motor, new_dir):
+#	if new_dir != 0:
+#		new_dir = 65535
+#	if motor.get_dir() != new_dir:
+#		while motor.get_spd() > 10:
+#			motor.set_spd(motor.get_spd // 2)
+
+# Set one motor direction to forward
+def set_fwd(motor):
+	if motor.type() != Motor:
+		return
+	motor.set_dir(1)
+
+# Set one motor direction to backward
+def set_bwd(motor):
+	if motor.type() != Motor:
+		print('Invalid motor')
+		return
+	motor.set_dir(0)
+
+# Set all motors direction to forward
+def set_all_fwd():
+	for motor in motors:
+		motor.set_dir(1)
+
+# Set all motors direction to backward
+def set_all_bwd():
+	for motor in motors:
+		motor.set_dir(0)
+
+# Drive one motor a speed
+def drv_motor(motor, direction, speed):
+#	if motor.type() != Motor:
+#		print('Invalid motor')
+#		return
+	if not check_val(speed, 'speed'):
+		return
+	elif not check_val(direction, 'dir'):
+		return
+	motor.set_dir(float(direction))
+	motor.set_spd(float(speed))
+
+# Drive all motors (current direction)
+def drv(speed):
+        if not check_val(speed, 'speed'):
+                return
+        for motor in motors:
+                motor.set_spd(speed)
+
+# Drive all motors forward
+def drv_fwd(speed):
+	if not check_val(speed, 'speed'):
+		return
+	set_all_fwd()
+	for motor in motors:
+		motor.set_spd(speed)
+
+# Drive all motors backward
+def drv_bwd(speed):
+	if not check_val(speed, 'speed'):
+		return
+	set_all_bwd()
+	for motor in motors:
+		motor.set_spd(speed)
+
+# Stop one motor
+def stop_motor(motor):
+	if motor.type() != Motor:
+		print('Invalid motor')
+		return
+	motor.stop()
+
+# Stop all motors
+def stop():
+	for motor in motors:
+		motor.stop()
+
+def cmd_help(command_list):
+	print('\nHere is a list of current possible commands:')
+	print()
+	print('set_fwd MOTOR : set a motor direction to forward')
+	print('set_bwd MOTOR : set a motor direction to backward')
+	print('set_all_fwd : set all motor directions to forward')
+	print('set_all_bwd : set all motor directions to backward')
+	print('drv_motor MOTOR DIR SPD : drive MOTOR in DIR direction and SPD speed')
+	print('drv : drive all motors in the current direction')
+	print('drv_fwd SPD : drive all motors forward at SPD speed')
+	print('drv_bwd SPD : drive all motors backward at SPD speed')
+	print('stop_motor MOTOR : stop specific MOTOR')
+	print('stop : stop all motors')
+	print('exit : exit code')
+	print('help : list commands')
+	print('get_motors : list all motors & locations')
+
+	print()
+
+
+#def setup():
+#	motor0 = Motor(0, 1, id=0)
+#	motor1 = Motor(2, 3, id=1)
+#
+#	motors += [motor0, motor1]
+#
+#	commands = {'set_fwd':set_fwd,'set_bwd':set_bwd,'set_all_fwd':set_all_fwd,'set_all_bwd':set_all_bwd,'drv_motor':drv_motor,
+#                'drv_fwd': drv_fwd, 'drv_bwd':drv_bwd,'stop_motor':stop_motor,'stop':stop,'exit':stop,'help':cmd_help, 
+#		'get_motors':get_motors}
+
+	# Current motor names
+#	motor_names = {'m0':motor0, 'm1':motor1}
+
+#	return motors, motor_names, commands
+
+
+# Current motor names [used for user input in main()]
+motor_names = {'m0':motor0, 
+		'm1':motor1, 
+		'm2':motor2,
+		'm3':motor3,
+		'm4':motor4,
+		'm5':motor5}
+#		'motor0':motor0, 'motor1':motor1
+
+commands = {'set_fwd':set_fwd,'set_bwd':set_bwd,'set_all_fwd':set_all_fwd,'set_all_bwd':set_all_bwd,'drv_motor':drv_motor,
+                'drv_fwd': drv_fwd, 'drv_bwd':drv_bwd,'stop_motor':stop_motor,'stop':stop,'exit':stop,'help':cmd_help,
+                'get_motors':get_motors}
+
+
+
+def main():
+	while True:
+		user_input = input('> ').split()
+
+		if len(user_input) == 0:
+			continue
+		
+		command = user_input[0]
+		
+		# Invalid CMD [not in command list]
+		if command not in commands.keys():
+			print('Not a valid command, use \'help\' to see a list of commands')
+			continue
+		
+		# user_input: CMD [stops everything and quits code]
+		elif command in ['exit']:
+			commands[command]()
+			break
+		
+		# user_input: CMD MOTOR DIR SPD
+		elif command == 'drv_motor':
+			if len(user_input) != 4:
+				print('Unspecified motor, direction, and/or speed value')
+				continue
+			MOTOR = user_input[1]
+			DIR = user_input[2]
+			SPD = user_input[3]
+			if MOTOR not in motor_names.keys():
+				print('invalid motor name (m0, m1, etc...)')
+				continue
+
+			MOTOR = motor_names[user_input[1]]		
+
+			commands[command](MOTOR, float(DIR), float(SPD))
+			
+		# user_input: CMD MOTOR
+		elif command in ['set_fwd', 'set_bwd', 'stop_motor']:
+			if len(user_input) != 2:
+				print('Unspecified motor, direction, and/or speed value')
+				continue
+			if user_input[1] not in motor_names.keys():
+				print('Invalid motor')
+				continue
+			MOTOR = motor_names[user_input[1]]
+
+			commands[command](MOTOR)
+		
+		# user_input: CMD SPD
+		elif command in ['drv_fwd', 'drv_bwd']:
+			if len(user_input) != 2:
+				print('Unspecified speed value')
+				continue 
+			SPD = user_input[1]
+			
+			commands[command](float(SPD))
+
+		# user_input CMD [requires commands list]
+		elif command in ['help']:
+			commands[command](commands)
+
+		# user_input CMD [not requiring any inputs]
+		else:
+			commands[command]()
+
+	stop()
+
+################
+
+main()
+
