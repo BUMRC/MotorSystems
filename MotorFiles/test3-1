@@ -45,7 +45,7 @@ shield.frequency = 250
 ################
 
 # Defining acceleration rates and delay between steps
-acceleration_rate = 1
+acceleration_rate = 0.5
 delay = 0.1
 class Motor:
 	def __init__(self, channel_dir, channel_spd, id, location='None'):
@@ -103,11 +103,13 @@ class Motor:
 			return
 		elif (curr_speed < speed):
 			while(curr_speed < speed):
-				curr_speed += acceleration_rate
+				increment = max((speed - curr_speed)*acceleration_rate, 1)
+				curr_speed += increment
 				self.spd.duty_cycle = int(655.35 * curr_speed)
 				time.sleep(delay)
 		else:
 			while(curr_speed > speed):
+				increment = max((curr_speed - speed) * acceleration_rate,1)
 				curr_speed -= acceleration_rate
 				self.spd.duty_cycle = int(655.35 * curr_speed)
 				time.sleep(delay)
