@@ -98,7 +98,7 @@ class Motor:
 	# Sets new speed with smoothing function, see acceleration rate and delay time above
 	def set_spd(self, speed):
 		# TODO: ADD IN SMOOTHING FUNCTION! See the check_dir func above for reference, change & add!
-		curr_speed = self.get_spd()
+		curr_speed = int(self.get_spd()/655.35)
 		if (curr_speed == speed):
 			return
 		elif (curr_speed < speed):
