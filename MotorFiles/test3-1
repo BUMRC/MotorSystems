@@ -67,7 +67,7 @@ class Motor:
 	# Helper method for set_dir, sets motor direction to foward (65535)
 	# Decellerates to 0 before accelerating to previous speed in opposite direction
 	def set_fwd(self):
-		curr_speed = self.get_spd()
+		curr_speed = int(self.get_spd()/655.35)
 		self.set_spd(0)
 		self.dir.duty_cycle = 65535
 		self.set_spd(curr_speed)
@@ -75,7 +75,7 @@ class Motor:
 	# Helper method for set_dir, sets motor direction to backward (0)
 	# Decellerates to 0 before accelerating to previous speed in opposite direction
 	def set_bwd(self):
-		curr_speed = self.get_spd()
+		curr_speed = int(self.get_spd()/655.35)
 		self.set_spd(0)
 		self.dir.duty_cycle = 0
 		self.set_spd(curr_speed)
