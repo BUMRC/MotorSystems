@@ -126,13 +126,13 @@ class Motor:
 # Defining motors 
 motor0 = Motor(0, 1, 0, 'wheel fl')
 motor1 = Motor(2, 3, 1, 'wheel fr')
-motor2 = Motor(4, 5, 2, 'wheel ml')
-motor3 = Motor(6, 7, 3, 'wheel mr')
-motor4 = Motor(8, 9, 4, 'wheel bl')
-motor5 = Motor(10,11,5, 'wheel br')
+#motor2 = Motor(4, 5, 2, 'wheel ml')
+#motor3 = Motor(6, 7, 3, 'wheel mr')
+#motor4 = Motor(8, 9, 4, 'wheel bl')
+#motor5 = Motor(10,11,5, 'wheel br')
 
-motors = [motor0, motor1, motor2, motor3, motor4, motor5]
-
+#motors = [motor0, motor1, motor2, motor3, motor4, motor5]
+motors = [motor0, motor1]
 
 # Current motor names [used for user input in main()]
 #motor_names = {'m0':motor0, 'm1':motor1}
@@ -261,7 +261,7 @@ def cmd_help(command_list):
 	print('set_all_fwd : set all motor directions to forward')
 	print('set_all_bwd : set all motor directions to backward')
 	print('drv_motor MOTOR DIR SPD : drive MOTOR in DIR direction and SPD speed')
-	print('drv : drive all motors in the current direction')
+	print('drv SPD: drive all motors in the current direction')
 	print('drv_fwd SPD : drive all motors forward at SPD speed')
 	print('drv_bwd SPD : drive all motors backward at SPD speed')
 	print('stop_motor MOTOR : stop specific MOTOR')
@@ -292,14 +292,15 @@ def cmd_help(command_list):
 # Current motor names [used for user input in main()]
 motor_names = {'m0':motor0, 
 		'm1':motor1, 
-		'm2':motor2,
-		'm3':motor3,
-		'm4':motor4,
-		'm5':motor5}
+#		'm2':motor2,
+#		'm3':motor3,
+#		'm4':motor4,
+#		'm5':motor5}
 #		'motor0':motor0, 'motor1':motor1
+		}
 
 commands = {'set_fwd':set_fwd,'set_bwd':set_bwd,'set_all_fwd':set_all_fwd,'set_all_bwd':set_all_bwd,'drv_motor':drv_motor,
-                'drv_fwd': drv_fwd, 'drv_bwd':drv_bwd,'stop_motor':stop_motor,'stop':stop,'exit':stop,'help':cmd_help,
+                'drv_fwd': drv_fwd, 'drv_bwd':drv_bwd,'drv':drv,'stop_motor':stop_motor,'stop':stop,'exit':stop,'help':cmd_help,
                 'get_motors':get_motors}
 
 
@@ -352,7 +353,7 @@ def main():
 			commands[command](MOTOR)
 		
 		# user_input: CMD SPD
-		elif command in ['drv_fwd', 'drv_bwd']:
+		elif command in ['drv_fwd', 'drv_bwd', 'drv']:
 			if len(user_input) != 2:
 				print('Unspecified speed value')
 				continue 
