@@ -14,6 +14,8 @@ warnings.filterwarnings('ignore')
 i2c = adafruit_extended_bus.ExtendedI2C(15)
 shield = adafruit_pca9685.PCA9685(i2c, address=0x40)
 shield.frequency = 250
+acceleration = 0 #acceleration speed
+delay = 0 #delay to go from 100 to -100
 
 class MotorController(Node):
     def __init__(self):
@@ -121,7 +123,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package='your_package',
+            package='motor_controls',
             executable='motor_controller',
             output='screen'
         ),
@@ -131,51 +133,3 @@ def generate_launch_description():
             output='screen'
         )
     ])
-
-# import rclpy
-# from rclpy.node import Node
-# from geometry_msgs.msg import Twist
-
-# class MotorControllerTest(Node):
-#     def __init__(self):
-#         super().__init__('motor_controller_test')
-#         self.subscription = self.create_subscription(
-#             Twist,
-#             '/cmd_vel',
-#             self.cmd_vel_callback,
-#             10)
-#         self.subscription  # Prevent unused variable warning
-#         self.get_logger().info("MotorControllerTest node started, waiting for /cmd_vel messages...")
-
-#     def set_motor(self, motor_index, direction):
-#         self.get_logger().info(f"Motor {motor_index}: {direction}")
-
-#     def cmd_vel_callback(self, msg):
-#         linear_speed = msg.linear.x
-#         angular_speed = msg.angular.z
-
-#         if linear_speed > 0:
-#             self.set_motor(0, 65535)
-#             self.set_motor(1, 65535)
-#         elif linear_speed < 0:
-#             self.set_motor(0, -65535)
-#             self.set_motor(1, -65535)
-#         elif angular_speed > 0:
-#             self.set_motor(0, 65535)
-#             self.set_motor(1, -65535)
-#         elif angular_speed < 0:
-#             self.set_motor(0, -65535)
-#             self.set_motor(1, 65535)
-#         else:
-#             self.set_motor(0, 0)
-#             self.set_motor(1, 0)
-
-# def main(args=None):
-#     rclpy.init(args=args)
-#     motor_controller_test = MotorControllerTest()
-#     rclpy.spin(motor_controller_test)
-#     motor_controller_test.destroy_node()
-#     rclpy.shutdown()
-
-# if __name__ == '__main__':
-#     main()
