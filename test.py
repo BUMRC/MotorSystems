@@ -1,11 +1,21 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Float64
+import board
+import busio
+import adafruit_pca9685
 import time
+import adafruit_extended_bus
 import warnings
 
 warnings.filterwarnings('ignore')
+
+#i2c = busio.I2C(board.SCL, board.SDA)
+i2c = adafruit_extended_bus.ExtendedI2C(15)
+shield = adafruit_pca9685.PCA9685(i2c, address=0x40)
+shield.frequency = 250
+acceleration = 0 #acceleration speed
+delay = 0 #delay to go from 100 to -100
 
 class MotorController(Node):
     def __init__(self):
@@ -16,25 +26,44 @@ class MotorController(Node):
             self.cmd_vel_callback,
             10)
         self.subscription 
-        self.motor_publishers = [self.create_publisher(
-            Float64,
-            f'/motor_{i}/target_velocity',
-            10) for i in range(6)]
         self.get_logger().info("MotorController node started")
-        
-        self.motor_velocities = [0, 0, 0, 0, 0, 0]
+        self.currentDirection = [0, 0, 0, 0, 0, 0]
+        self.motors = [(shield.channels[i], shield.channels[i+1]) for i in range(0, 12, 2)]
     
     def set_motor(self, motor_index, velocity):
-        self.motor_velocities[motor_index] = velocity
-        msg = Float64()
-        msg.data = float(velocity)
-        self.motor_publishers[motor_index].publish(msg)
-        self.get_logger().info(f"Motor {motor_index} set to {velocity}")
+        forward_pin, reverse_pin = self.motors[motor_index]
+        if abs(velocity) < 1000:
+            velocity = 0
+        if motor_index % 2 == 1:
+            print(f"Swap direction on motor {motor_index}")
+            velocity *= -1
+        
+
+        if velocity != 0:
+            velocity = self.currentDirection[motor_index] + (velocity - self.currentDirection[motor_index]) * 0.01
+        self.currentDirection[motor_index] = velocity
+
+        print(f"Motor vel: {velocity} for {motor_index}")
+        if abs(velocity) < 32767:
+            velocity = 0
+        
+        if velocity > 0:
+            forward_pin.duty_cycle = max(32767,min(int(velocity), 65535))
+            reverse_pin.duty_cycle = 0
+
+        elif velocity < 0:
+            forward_pin.duty_cycle = 0
+            reverse_pin.duty_cycle = max(32767,min(int(-velocity), 65535))
+
+        else:
+            forward_pin.duty_cycle = 0
+            reverse_pin.duty_cycle = 0
+
     
-    def cmd_vel_callback(self, msg: Twist):
+    def cmd_vel_callback(self, msg):
         linear_speed = msg.linear.x
         angular_speed = msg.angular.z
-        print(f"linear_speed: {linear_speed}, angular_speed: {angular_speed}")
+        time.sleep(0.01)
         if linear_speed > 0:
             self.get_logger().info("f")
             self.set_motor(0, 65535)
@@ -55,10 +84,11 @@ class MotorController(Node):
             self.get_logger().info("cw")
             self.set_motor(0, 65535)
             self.set_motor(1, -65535)
-            self.set_motor(2, 65535)
-            self.set_motor(3, -65535)
-            self.set_motor(4, 65535)
-            self.set_motor(5, -65535)
+            self.set_motor(2, -65535)
+            self.set_motor(3, 65535)
+            self.set_motor(4, -65535)
+            self.set_motor(5, 65535)
+
         elif angular_speed < 0:
             self.get_logger().info("ccw")
             self.set_motor(0, -65535)

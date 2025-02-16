@@ -174,7 +174,7 @@ def main():
     shield = DummyShield()
     
     motors = []
-    for motor_id in range(6):
+    for motor_id in range(4):
         config = {
             'pid': {
                 'kp': 0.1,
@@ -207,9 +207,9 @@ def main():
     finally:
         for motor in motors:
             motor.destroy_node()
-        for motor_id in range(6):
-            forward_pin = motor_id * 2 + (motor_id % 2)
-            reverse_pin = motor_id * 2 + 1 - (motor_id % 2)
+        for motor_id in range(4):
+            forward_pin = motor_id * 2 + (motor_id % 2) + 1
+            reverse_pin = motor_id * 2 + 1 - (motor_id % 2) + 1
             shield[forward_pin].duty_cycle = 0
             shield[reverse_pin].duty_cycle = 0
         rclpy.shutdown()
