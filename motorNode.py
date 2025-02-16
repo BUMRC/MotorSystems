@@ -66,6 +66,7 @@ class MotorNode(Node):
             self.control_loop
         )
         
+        self.last_control_loop_time = self.get_clock().now()
         self.init_hardware()
         
         self.get_logger().info(f"Motor {motor_id} ({self.side}) initialized")
@@ -130,14 +131,14 @@ class MotorNode(Node):
             self.state = MotorState.ERROR
     
     def control_loop(self):
-        time_since_last_command = (self.get_clock().now() - self.last_command_time).nanoseconds * 1e-9
-        if time_since_last_command > self.config['timeout']:
-            self.target_velocity = 0.0
-            self.get_logger().warn("Command timeout - stopping motor")
+        # time_since_last_command = (self.get_clock().now() - self.last_command_time).nanoseconds * 1e-9
+        # if time_since_last_command > self.config['timeout']:
+        #     self.target_velocity = 0.0
+        #     self.get_logger().warn("Too long since last command - stopping motor")
         
         ramped_target = self.ramp_velocity(self.current_velocity, self.target_velocity)
-        
-        output = self.pid.compute(self.current_velocity, ramped_target)
+        time_since_last_control_loop = (self.get_clock().now() - self.last_control_loop_time).nanoseconds * 1e-9
+        output = self.pid.compute(self.current_velocity, ramped_target, time_since_last_control_loop)
         
         self.set_motor_output(output)
         
@@ -146,6 +147,7 @@ class MotorNode(Node):
         status_msg = Float64()
         status_msg.data = self.current_velocity
         self.status_publisher.publish(status_msg) #TODO: actually set this up for correct data
+        self.last_control_loop_time = self.get_clock().now()
         
     # on shutdown, set all motors to 0
     def on_shutdown(self):
