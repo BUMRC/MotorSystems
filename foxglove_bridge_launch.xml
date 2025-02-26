@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Launch Foxglove Bridge node with configurable parameters -->
+  <node pkg="foxglove_bridge" exec="foxglove_bridge">
+    <!-- Basic Configuration -->
+    <param name="port" value="8765"/>
+    <param name="address" value="0.0.0.0"/>
+    
+    <!-- Security Settings -->
+    <param name="tls" value="false"/>
+    <param name="certfile" value=""/>
+    <param name="keyfile" value=""/>
+    
+    <!-- Access Control -->
+    <param name="topic_whitelist" value="['.*']"/>
+    <param name="service_whitelist" value="['.*']"/>
+    <param name="param_whitelist" value="['.*']"/>
+    <param name="client_topic_whitelist" value="['.*']"/>
+    
+    <!-- Performance Settings -->
+    <param name="send_buffer_limit" value="10000000"/>
+    <param name="use_compression" value="false"/>
+    <param name="num_threads" value="0"/>
+    
+    <!-- QoS Settings -->
+    <param name="min_qos_depth" value="1"/>
+    <param name="max_qos_depth" value="25"/>
+    
+    <!-- Visibility Settings -->
+    <param name="include_hidden" value="false"/>
+    
+    <!-- Capabilities -->
+    <param name="capabilities" value="['clientPublish', 'parameters', 'parametersSubscribe', 'services', 'connectionGraph', 'assets']"/>
+    
+    <!-- Asset URI Allowlist -->
+    <param name="asset_uri_allowlist" value="['^package://(?:\w+/)*\w+\.(?:dae|fbx|glb|gltf|jpeg|jpg|mtl|obj|png|stl|tif|tiff|urdf|webp|xacro)$']"/>
+    <!-- ROS2 only nodes -->
+    <param name="num_threads" value="0"/>
+    <param name="min_qos_depth" value="1"/>
+    <param name="max_qos_depth" value="25"/>
+    <param name="include_hidden" value="false"/>
+  </node>
+</launch>
