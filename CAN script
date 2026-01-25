@@ -84,9 +84,9 @@ int main(void) {
         return 1;
     }
 
-    // Find the interface index for "can0"
+    // Find the interface index for "can1"
     struct ifreq ifr;
-    strcpy(ifr.ifr_name, "can0");             // interface name
+    strcpy(ifr.ifr_name, "can1");             // interface name
     if (ioctl(can_socket, SIOCGIFINDEX, &ifr) < 0) {
         perror("ioctl failed");
         return 1;
