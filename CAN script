@@ -1,0 +1,113 @@
+// This script is for easily testing sending CAN commands
+// It sets up SocketCAN and sends motor commands in RPM mode
+
+#include <stdint.h>       // uint8_t, int32_t, etc.
+#include <unistd.h>       // usleep
+#include <linux/can.h>    // struct can_frame
+#include <linux/can/raw.h> // CAN_RAW protocol
+#include <sys/socket.h>   // socket(), bind()
+#include <net/if.h>       // struct ifreq
+#include <sys/ioctl.h>    // ioctl()
+#include <string.h>       // memset(), strcpy()
+#include <stdio.h>        // perror(), printf()
+#include <assert.h>       // assert()
+
+// Global socket variable (accessible from all functions)
+int can_socket;
+
+// Enum for different servo modes
+typedef enum {
+    CAN_PACKET_SET_DUTY = 0,          // Duty Cycle Mode
+    CAN_PACKET_SET_CURRENT = 1,       // Current Loop Mode
+    CAN_PACKET_SET_CURRENT_BRAKE = 2, // Current Brake Mode
+    CAN_PACKET_SET_RPM = 3,           // Velocity/Speed Mode
+    CAN_PACKET_SET_POS = 4,           // Position Mode
+    CAN_PACKET_SET_ORIGIN_HERE = 5,   // Set origin mode
+    CAN_PACKET_SET_POS_SPD = 6        // Position-Velocity Loop Mode
+} CAN_PACKET_ID;
+
+// Append a 32-bit integer to a buffer (big-endian)
+void buffer_append_int32(uint8_t* buffer, int32_t number, int32_t *index) {
+    buffer[(*index)++] = number >> 24;
+    buffer[(*index)++] = number >> 16;
+    buffer[(*index)++] = number >> 8;
+    buffer[(*index)++] = number;
+}
+
+// Append a 16-bit integer to a buffer (big-endian)
+void buffer_append_int16(uint8_t* buffer, int16_t number, int16_t *index) {
+    buffer[(*index)++] = number >> 8;
+    buffer[(*index)++] = number;
+}
+
+// Sends a CAN frame using the global can_socket
+void comm_can_transmit_eid(uint32_t id, const uint8_t *data, uint8_t len) {
+    if (len > 8) len = 8; // CAN frames can only carry 8 bytes payload
+
+    struct can_frame frame;
+    memset(&frame, 0, sizeof(frame)); // Clear everything
+
+    frame.can_id  = CAN_EFF_FLAG | id; // Extended 29-bit ID
+    frame.can_dlc = len;               // Payload length
+    for (int i = 0; i < len; i++)
+        frame.data[i] = data[i];       // Copy payload
+
+    // Send the frame
+    int nbytes = write(can_socket, &frame, sizeof(frame));
+    if (nbytes != sizeof(frame)) {
+        perror("CAN write failed");
+    }
+}
+
+// Sends an RPM command to a motor
+void comm_can_set_rpm(uint8_t controller_id, float rpm) {
+    // Clamp RPM to allowed range
+    if (rpm > 100000) rpm = 100000;
+    if (rpm < -100000) rpm = -100000;
+
+    int32_t send_index = 0;
+    uint8_t buffer[4];
+    buffer_append_int32(buffer, (int32_t)rpm, &send_index);
+
+    // CAN ID layout:
+    // bits [15:8] = control mode
+    // bits [7:0]  = driver ID
+    comm_can_transmit_eid(controller_id | ((uint32_t)CAN_PACKET_SET_RPM << 8),
+                          buffer, send_index);
+}
+
+int main(void) {
+    // Open a raw CAN socket
+    can_socket = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    if (can_socket < 0) {
+        perror("Failed to create CAN socket");
+        return 1;
+    }
+
+    // Find the interface index for "can0"
+    struct ifreq ifr;
+    strcpy(ifr.ifr_name, "can0");             // interface name
+    if (ioctl(can_socket, SIOCGIFINDEX, &ifr) < 0) {
+        perror("ioctl failed");
+        return 1;
+    }
+
+    // Bind the socket to the CAN interface
+    struct sockaddr_can addr;
+    addr.can_family = AF_CAN;
+    addr.can_ifindex = ifr.ifr_ifindex;
+    if (bind(can_socket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("bind failed");
+        return 1;
+    }
+
+    printf("CAN socket initialized on interface can0\n");
+
+    // Main loop: send RPM commands every millisecond
+    while (1) {
+        comm_can_set_rpm(1, 50); // motor ID 1, RPM 5000
+        usleep(1000);              // sleep 1000 microseconds (1 ms)
+    }
+
+    return 0;
+}
