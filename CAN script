@@ -105,7 +105,7 @@ int main(void) {
 
     // Main loop: send RPM commands every millisecond
     while (1) {
-        comm_can_set_rpm(1, 50); // motor ID 1, RPM 5000
+        comm_can_set_rpm(1, 50000); // motor ID 1, RPM 5000
         usleep(1000);              // sleep 1000 microseconds (1 ms)
     }
 
